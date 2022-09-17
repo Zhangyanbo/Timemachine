@@ -3,7 +3,7 @@ import time_machine as tm
 import numpy as np
 
 
-class TestConsistency(unittest.TestCase):
+class TestDayRange(unittest.TestCase):
     def test_past(self):
         raw = tm.read_csv('./example_data/SPG_2020_2020.txt')
         history = tm.History(raw)

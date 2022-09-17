@@ -1,6 +1,7 @@
 import pandas_market_calendars as mcal
 import torch.utils.data as data
 import numpy as np
+import torch
 from .grouping import day_group, intra_day_list
 
 
@@ -27,12 +28,11 @@ def filter_intradays(df_list):
     return [filter_intraday(df, open_time, close_time) for df, (open_time, close_time) in zip(df_list, schedule[['market_open', 'market_close']].values)]
 
 class History(data.Dataset):
-    def __init__(self, df, window_size=32):
+    def __init__(self, df):
         self.df = df
-        self.window_size = window_size
 
         self._init()
-        self.length = len(self.df_intral_day) - window_size
+        self.length = len(self.df_intral_day)
     
     def _init(self):
         self.df_day = day_group(self.df)
@@ -79,3 +79,34 @@ class History(data.Dataset):
         Note: idx is included
         '''
         return self.get_day_range_idx(idx, idx + dt)
+
+
+class TradingHistory(History):
+    def __init__(self, df, window_past=16, window_future=5):
+        super().__init__(df)
+        self.window_past = window_past
+        self.window_future = window_future
+    
+    def __len__(self):
+        return len(self.df_day) - self.window_past - self.window_future
+    
+    def __getitem__(self, idx):
+        r'''Returing the data for the idx day, and the past and future data
+        
+        The output contains the following data:
+        - OHLCV data for the idx day, time interval is 5 minutes
+        - OHLCV data for the past window_past days, time interval is 1 day
+        - OHLCV data for the future window_future days, time interval is 1 day
+        '''
+
+        idx = idx + self.window_past
+        
+        tn = self.get_intraday_idx(idx)
+        tp = self.get_day_past_idx(idx, self.window_past)
+        tf = self.get_day_future_idx(idx, self.window_future)
+
+        tn = torch.from_numpy(tn).float()
+        tp = torch.from_numpy(tp).float()
+        tf = torch.from_numpy(tf).float()
+
+        return tn, tp, tf
