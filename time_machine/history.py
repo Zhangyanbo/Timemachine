@@ -58,3 +58,24 @@ class History(data.Dataset):
     def get_intraday_idx(self, idx):
         df = self.df_intral_day_filtered[idx]
         return df[['O', 'H', 'L', 'C', 'V']].values.astype(np.float64)
+    
+    def get_day_range_idx(self, idx_begin, idx_end):
+        r'''Return the day data for the range [idx_begin, idx_end)
+
+        Note: idx_end is not included, but idx_begin is included
+        '''
+        return self.df_day.iloc[idx_begin:idx_end][['O', 'H', 'L', 'C', 'V']].values.astype(np.float64)
+    
+    def get_day_past_idx(self, idx, dt):
+        r'''Return the day data for the range [idx - past, idx)
+
+        Note: idx is included
+        '''
+        return self.get_day_range_idx(idx - dt + 1, idx + 1)
+    
+    def get_day_future_idx(self, idx, dt):
+        r'''Return the day data for the range [idx, idx + future)
+
+        Note: idx is included
+        '''
+        return self.get_day_range_idx(idx, idx + dt)
