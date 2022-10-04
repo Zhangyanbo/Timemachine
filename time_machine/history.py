@@ -3,29 +3,43 @@ import torch.utils.data as data
 import numpy as np
 import torch
 from .grouping import day_group, intra_day_list
+import pandas as pd
 
+
+class Schedule:
+    def __init__(self, start_date, end_date, tx='America/New_York'):
+        nyse = mcal.get_calendar('NYSE')
+        self.schedule = nyse.schedule(start_date, end_date, tz='America/New_York')
+
+        keys = [day.date() for day in self.schedule.index]
+        self.sch_dict = dict(zip(keys, self.schedule[['market_open', 'market_close']].values.tolist()))
+
+        self.default_open = pd.Timedelta('9:30:00')
+        self.default_close = pd.Timedelta('16:00:00')
+    
+    def __getitem__(self, date):
+        date = pd.Timestamp(date).date()
+        if date in self.sch_dict:
+            return self.sch_dict[date]
+        else:
+            day = pd.Timestamp(date, tz='America/New_York')
+            return [day + self.default_open, day + self.default_close]
 
 def filter_intraday(df, open_time, close_time):
     r'''Filter out the pre / post market data'''
+    #print(f'open_time: {open_time}, close_time: {close_time}')
+    #print(f't0 = {df["time"].iloc[0]}')
     df = df[(df['time'] >= open_time) & (df['time'] <= close_time)]
 
     return df
-
-def align_dates(schedule, all_dates):
-    r'''remove dates that are not in the all_dates
-    '''
-    all_dates = set(all_dates)
-    return schedule[schedule.index.isin(all_dates)]
 
 def filter_intradays(df_list):
     r'''Filter out the pre / post market data for each day'''
     all_dates = [df['time'].iloc[0].date() for df in df_list]
     nyse = mcal.get_calendar('NYSE')
-    schedule = nyse.schedule(start_date=all_dates[0], end_date=all_dates[-1], tz='America/New_York')
+    schedule = Schedule(all_dates[0], all_dates[-1])
 
-    schedule = align_dates(schedule, all_dates)
-
-    return [filter_intraday(df, open_time, close_time) for df, (open_time, close_time) in zip(df_list, schedule[['market_open', 'market_close']].values)]
+    return [filter_intraday(df, *schedule[df['time'].iloc[0].date()]) for df in df_list]
 
 class History(data.Dataset):
     def __init__(self, df):
@@ -78,7 +92,7 @@ class History(data.Dataset):
 
         Note: idx is included
         '''
-        return self.get_day_range_idx(idx, idx + dt)
+        return self.get_day_range_idx(idx + 1, idx + dt + 1)
 
 
 class TradingHistory(History):
@@ -101,12 +115,12 @@ class TradingHistory(History):
 
         idx = idx + self.window_past
         
-        tn = self.get_intraday_idx(idx)
-        tp = self.get_day_past_idx(idx, self.window_past)
-        tf = self.get_day_future_idx(idx, self.window_future)
+        t_today = self.get_intraday_idx(idx)
+        t_past = self.get_day_past_idx(idx, self.window_past)
+        t_future = self.get_day_future_idx(idx, self.window_future)
 
-        tn = torch.from_numpy(tn).float()
-        tp = torch.from_numpy(tp).float()
-        tf = torch.from_numpy(tf).float()
+        t_today = torch.from_numpy(t_today).float()
+        t_past = torch.from_numpy(t_past).float()
+        t_future = torch.from_numpy(t_future).float()
 
-        return tn, tp, tf
+        return t_today, t_past, t_future
