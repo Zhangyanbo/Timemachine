@@ -20,6 +20,6 @@ class TestDayRange(unittest.TestCase):
         
         path = history.get_day_future_idx(idx=1, dt=3)
 
-        path_target = history.df_day.iloc[[1, 2, 3]][['O', 'H', 'L', 'C', 'V']].values.astype(np.float64)
+        path_target = history.df_day.iloc[[2, 3, 4]][['O', 'H', 'L', 'C', 'V']].values.astype(np.float64)
 
         assert np.all(path == path_target)

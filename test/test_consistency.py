@@ -8,10 +8,13 @@ class TestConsistency(unittest.TestCase):
         history = tm.History(raw)
         
         for i in range(len(history)):
-            intra = history.get_intraday_idx(i)
+            intra = history.get_full_intraday_idx(i)
             o, h, l, c, v = history.get_day_idx(i)
-            H = max(intra[:, 1])
-            L = min(intra[:, 2])
+            H = intra[:, 1].max()
+            L = intra[:, 2].min()
 
-            self.assertEqual(H, h)
-            self.assertEqual(L, l)
+            if H != h or L != l:
+                print(f'i = {i}, H = {H}, h = {h}, L = {L}, l = {l}')
+            
+            assert H == h
+            assert L == l
