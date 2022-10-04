@@ -21,3 +21,9 @@ This will return three `torch.Tensor`s:
 1. OHLCV data for the `idx` day, time interval is 5 minutes
 2. OHLCV data for the past `window_past` days, time interval is 1 day
 3. OHLCV data for the future `window_future` days, time interval is 1 day
+
+The time relation is shown below:
+
+![](./figures/timemachine.png)
+
+The `t_pas` will also include the information of `t_now`. But the `t_fut` will **not** include `t_now` for preventing information leaking. The `t_now` is the intra-day data for given `idx`.
